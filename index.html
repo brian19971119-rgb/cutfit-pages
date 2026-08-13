@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <base href="./" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="紙張與相片裁切最佳化計算器" />
+  <title>裁得好 — 紙張裁切最佳化</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&amp;family=Roboto+Mono:wght@500;600&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=29" />
+  <link rel="stylesheet" href="animation.css?v=29" />
+  <link rel="stylesheet" href="layout-fix.css?v=29" />
+  <link rel="stylesheet" href="readability.css?v=29" />
+  <link rel="stylesheet" href="modes.css?v=29" />
+  <link rel="stylesheet" href="mode-states.css?v=29" />
+  <link rel="stylesheet" href="quantity-first.css?v=29" />
+  <link rel="stylesheet" href="workflow-options.css?v=29" />
+  <link rel="stylesheet" href="batch.css?v=29" />
+  <link rel="stylesheet" href="report.css?v=29" />
+  <link rel="stylesheet" href="multi-target.css?v=29" />
+  <link rel="stylesheet" href="layout-gallery.css?v=29" />
+  <link rel="stylesheet" href="support.css?v=29" />
+  <link rel="stylesheet" href="reuse-rule.css?v=29" />
+  <link rel="stylesheet" href="roll-and-stack.css?v=29" />
+  <link rel="stylesheet" href="layout-choices.css?v=29" />
+  <link rel="stylesheet" href="interaction-fixes.css?v=31" />
+  <style>.sheet-count-visual:hover i{right:var(--fan-right)!important;transform:rotate(var(--fan-angle))!important}</style>
+  <style>.more-sizes{display:block;margin:0 auto 14px;border:1px solid var(--green2);background:#fff;color:var(--green);border-radius:8px;padding:9px 15px;font-weight:600;cursor:pointer}.more-sizes:hover{background:#eff6f0}.more-sizes[hidden]{display:none}.report-state small{position:static!important;right:auto!important;bottom:auto!important}</style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="裁得好首頁">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i></span>
+      <span>裁得好</span>
+    </a>
+    <div class="topbar-tools"><p>紙張與捲筒紙裁切最佳化</p><label class="language-picker" aria-label="選擇語言"><span>🌐</span><select id="languageSelect"><option value="zh-TW">繁體中文</option><option value="zh-CN">简体中文</option><option value="en">English</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="th">ไทย</option></select></label></div>
+  </header>
+
+  <main>
+    <nav class="mode-switch" aria-label="原料類型">
+      <button class="active" type="button" data-mode="sheet" aria-pressed="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18H5zM8 7h8M8 11h8"/></svg>
+        <span><b>一般紙張</b><small>A3、A3+、B2 或自訂寬高</small></span>
+      </button>
+      <button type="button" data-mode="roll" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h12v12H6zM18 9h2a2 2 0 0 1 0 4h-2M6 9H4a2 2 0 0 0 0 4h2"/></svg>
+        <span><b>捲筒紙</b><small>固定卷寬，連續供紙或指定卷長</small></span>
+      </button>
+    </nav>
+    <section class="intro">
+      <div>
+        <span class="eyebrow">CUT SMARTER, WASTE LESS</span>
+        <h1>紙張裁切計算器</h1>
+        <p>輸入尺寸與數量，查看排版、用紙量和裁切順序。</p>
+      </div>
+      <div class="intro-note" aria-label="使用說明">
+        <span>01</span>
+        <p>輸入尺寸</p><span>02</span><p>查看排法</p><span>03</span><p>照圖裁切</p>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <form class="controls" id="cutForm" autocomplete="off">
+        <div class="section-heading">
+          <span>設定</span>
+          <select id="unit" aria-label="尺寸單位">
+            <option value="mm">毫米 mm</option>
+            <option value="cm">公分 cm</option>
+            <option value="in">英吋 in</option>
+          </select>
+        </div>
+
+        <fieldset>
+          <legend><span>1</span> <b id="sourceLegend">原紙尺寸</b></legend>
+          <div class="size-chooser sheet-only">
+            <button class="selected-size" id="paperSizeButton" type="button" data-picker="paper">
+              <span><small>已選紙張</small><b id="paperSizeName">A3</b></span>
+              <span>選擇其他尺寸 <b aria-hidden="true">›</b></span>
+            </button>
+          </div>
+          <div class="dimension-row sheet-only">
+            <label>寬度<input id="paperW" type="number" min="0.1" step="0.1" value="297" required><small class="unit-label">mm</small></label>
+            <span>×</span>
+            <label>高度<input id="paperH" type="number" min="0.1" step="0.1" value="420" required><small class="unit-label">mm</small></label>
+          </div>
+          <div class="roll-only" hidden>
+            <div class="roll-width-line"><label class="full-field">捲筒寬度<input id="rollW" type="number" min="0.1" step="0.1" value="610"><small class="unit-label">mm</small></label><div class="roll-width-presets" aria-label="常用捲筒寬度"><button type="button" data-roll-width="610">24 吋<small>610</small></button><button type="button" data-roll-width="914">36 吋<small>914</small></button><button type="button" data-roll-width="1067">42 吋<small>1067</small></button></div></div>
+            <label class="roll-length-check"><input id="checkRollLength" type="checkbox"><span><b>檢查卷長是否足夠</b><small>有需要時再輸入手上剩餘卷長</small></span></label>
+            <label class="full-field" id="rollLengthField" hidden>可用卷長<input id="rollLength" type="number" min="0.1" step="0.1" value="30"><small id="rollLengthUnit">m</small></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend><span>2</span> 成品尺寸</legend>
+          <div class="target-mode-switch roll-only" hidden role="group" aria-label="成品尺寸輸入方式"><button class="active" type="button" data-target-mode="single">單一尺寸、多張</button><button type="button" data-target-mode="multiple">不同尺寸、不同數量</button></div>
+          <div id="singleTargetFields">
+          <div class="size-chooser">
+            <button class="selected-size" id="targetSizeButton" type="button" data-picker="target">
+              <span><small>已選成品</small><b id="targetSizeName">4 × 6 吋</b></span>
+              <span>選擇其他尺寸 <b aria-hidden="true">›</b></span>
+            </button>
+          </div>
+          <div class="dimension-row">
+            <label>寬度<input id="targetW" type="number" min="0.1" step="0.1" value="101.6" required><small class="unit-label">mm</small></label>
+            <span>×</span>
+            <label>高度<input id="targetH" type="number" min="0.1" step="0.1" value="152.4" required><small class="unit-label">mm</small></label>
+          </div>
+          </div>
+          <div class="batch-entry roll-only" id="multipleTargetFields" hidden>
+            <div class="quick-job-form"><label>寬度<input id="jobW" type="number" min="0.1" step="0.1" placeholder="30"><small class="unit-label">mm</small></label><span>×</span><label>高度<input id="jobH" type="number" min="0.1" step="0.1" placeholder="34"><small class="unit-label">mm</small></label><span>×</span><label>數量<input id="jobQty" type="number" min="1" step="1" placeholder="5"><small>張</small></label><button id="addBatchJob" type="button">加入項目</button></div>
+            <p class="quick-help">輸入一種尺寸和數量後按「加入項目」，可繼續加入下一種。</p>
+            <div class="job-list" id="batchJobList" aria-live="polite"><p>尚未加入任何裁切項目。</p></div>
+            <details class="batch-paste"><summary>大量貼上文字資料</summary>
+            <div class="batch-head"><b>批次輸入不同成品尺寸</b><button id="fillBatchExample" type="button">填入範例</button></div>
+            <textarea id="batchInput" rows="4" placeholder="30x34cmx5p, 43x43cmx8p" aria-describedby="batchHelp batchError"></textarea>
+            <p id="batchHelp">格式：寬 × 高 × 數量。可用逗號或換行分開，例如 30x34cmx5p。</p>
+            </details>
+            <p class="batch-error" id="batchError" role="alert"></p>
+            <input id="useBatch" type="checkbox" hidden>
+          </div>
+        </fieldset>
+
+        <fieldset id="requirementsFieldset">
+          <legend id="requirementsHeading"><span>3</span> <b id="requirementsLegend">製作需求</b></legend>
+          <label class="full-field" id="productionQuantity">需要數量<input id="quantity" type="number" min="1" step="1" value="1" inputmode="numeric" autocomplete="off" required><small>張</small></label>
+          <div class="quantity-presets" id="quantityPresets" aria-label="常用數量">
+            <button class="active" type="button" data-quantity="1">1</button><button type="button" data-quantity="3">3</button><button type="button" data-quantity="5">5</button><button type="button" data-quantity="9">9</button><button type="button" data-quantity="10">10</button><button type="button" data-quantity="20">20</button>
+          </div>
+          <label class="switch-row"><span><b>允許旋轉 90°</b><small>通常能增加可裁張數</small></span><input id="allowRotate" type="checkbox" checked><i aria-hidden="true"></i></label>
+          <label class="switch-row sheet-only"><span><b>短邊優先裁切</b><small>同樣省紙時，優先從原紙短邊分條</small></span><input id="shortEdgeFirst" type="checkbox"><i aria-hidden="true"></i></label>
+          <div class="calculation-rule sheet-only">優先保留接近正方形、方便再利用的完整餘紙。</div>
+        </fieldset>
+
+        <button class="calculate" id="calculateBtn" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 4v6M17 4v6M5 13h4v6H5zm10 0h4v6h-4z"/></svg>
+          計算最佳裁法
+        </button>
+      </form>
+
+      <section class="result" aria-live="polite">
+        <div class="result-top">
+          <div><span class="eyebrow">OPTIMIZED LAYOUT</span><h2>最佳裁切方案</h2></div>
+          <div class="status"><i></i> 已最佳化</div>
+        </div>
+
+        <div class="metrics">
+          <article class="primary-metric"><span id="piecesLabel">每張原紙可裁</span><strong id="pieces">8</strong><small id="piecesUnit">張成品</small></article>
+          <article><span id="sheetsLabel">需要原紙</span><strong id="sheets">13</strong><small id="sheetsUnit">張</small></article>
+          <article><span>材料利用率</span><strong id="usage">99.3%</strong><small id="waste">損耗 0.7%</small></article>
+          <article id="capacityMetric"><span>單張最多可裁</span><strong id="capacity">8</strong><small>張成品</small></article>
+        </div>
+
+        <div class="feasibility">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
+          <div><b id="feasibilityTitle">這個排法可以實際裁</b><p id="feasibilityText">只使用「一刀切到底」的方式。每一刀都會把手上的紙分成兩塊，不需要從紙張中間停刀。</p></div>
+        </div>
+
+        <div class="plan-card">
+          <div class="sheet-plan-switch" id="sheetPlanSwitch" hidden></div>
+          <div class="plan-head">
+            <div><h3>裁切配置圖</h3><p id="planDescription">混合方向排列</p></div>
+            <div class="plan-actions">
+              <div class="legend"><span><i class="swatch-piece"></i>成品</span><span><i class="swatch-waste"></i>餘料</span></div>
+              <button class="play-cuts" id="playCuts" type="button" aria-label="播放裁切順序">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 8 5-8 5V7Z"/></svg>
+                <span>播放裁切順序</span>
+              </button>
+            </div>
+          </div>
+          <div class="canvas-wrap">
+            <div class="layout-alternatives" id="layoutAlternatives" hidden></div>
+            <div class="current-layout">
+              <p class="layout-caption" id="currentLayoutLabel"></p>
+              <div id="layoutCanvas" role="img" aria-label="紙張裁切配置圖"></div>
+              <div class="measure measure-w" id="measureW">297 mm</div>
+              <div class="measure measure-h" id="measureH">420 mm</div>
+            </div>
+          </div>
+          <div class="layout-choice-bar" id="layoutChoiceBar" hidden aria-label="其他排列方式"></div>
+          <div class="plan-foot">
+            <div><span>排列方式</span><b id="arrangement">2 欄 × 4 列</b></div>
+            <div><span id="actualLabel">實際產出</span><b id="actual">104 張</b></div>
+            <div><span id="extraLabel">多出備品</span><b id="extra">4 張</b></div>
+          </div>
+          <div class="cut-sequence" id="cutSequence">
+            <div class="sequence-status">
+              <span class="step-badge" id="stepBadge">準備</span>
+              <div><b id="stepTitle">按下播放開始模擬</b><p id="stepDetail">會依照建議順序顯示每一道裁線。</p></div>
+            </div>
+            <ol id="sequenceList" aria-label="裁切順序清單"></ol>
+          </div>
+        </div>
+
+        <div class="tip">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 22h4M8.5 14.5A6 6 0 1 1 15.5 14.5c-.9.7-1.4 1.5-1.5 2.5h-4c-.1-1-.6-1.8-1.5-2.5Z"/></svg>
+          <div><b>裁切小提醒</b><p id="tipText">建議先裁長邊，再裁短邊，操作會更有效率。</p></div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <dialog class="size-dialog" id="sizeDialog" aria-labelledby="sizeDialogTitle">
+    <div class="dialog-head">
+      <div><span class="eyebrow">SIZE LIBRARY</span><h2 id="sizeDialogTitle">選擇尺寸</h2></div>
+      <button id="closeDialog" type="button" aria-label="關閉尺寸選單">×</button>
+    </div>
+    <div class="size-tabs" role="tablist" aria-label="尺寸分類">
+      <button class="active" type="button" role="tab" data-family="A">A 系列</button>
+      <button type="button" role="tab" data-family="B">B 系列</button>
+      <button type="button" role="tab" data-family="photo">相片尺寸</button>
+    </div>
+    <p class="family-help" id="familyHelp">A 系列是常見辦公與列印用紙，數字越大，紙張越小。</p>
+    <div class="size-grid" id="sizeGrid"></div>
+    <button class="more-sizes" id="togglePhotoSizes" type="button" hidden>顯示更多相片尺寸</button>
+    <div class="dialog-foot"><span>點選尺寸後會自動帶入寬度與高度。</span><button id="customSize" type="button">我要自行輸入</button></div>
+  </dialog>
+
+  <dialog class="report-dialog" id="reportDialog" aria-labelledby="reportTitle">
+    <form id="reportForm">
+      <div class="report-head">
+        <div><span class="eyebrow">FEEDBACK</span><h2 id="reportTitle">回報問題或提出建議</h2></div>
+        <button id="closeReport" type="button" aria-label="關閉問題回報">×</button>
+      </div>
+      <p class="report-intro">說明你遇到的情況，我們會一併整理目前的裁切設定，方便找出問題。</p>
+      <label class="report-field">回報類型
+        <select id="reportType">
+          <option>計算結果不正確</option><option>裁切動畫有問題</option><option>畫面顯示異常</option><option>找不到需要的尺寸</option><option>希望新增功能</option><option>其他問題</option>
+        </select>
+      </label>
+      <label class="report-field">補充說明
+        <textarea id="reportMessage" rows="5" required placeholder="例如：我輸入 13 × 19 英吋，要裁 5 × 7 英吋時，第四刀看起來不正確……"></textarea>
+      </label>
+      <label class="report-field">你的聯絡信箱（選填）
+        <input id="reportContact" type="email" inputmode="email" autocomplete="email" placeholder="方便維護者回覆你">
+      </label>
+      <label class="report-state"><input id="includeReportState" type="checkbox" checked><span><b>附上目前網頁狀態</b><small>包含尺寸、數量、選項、計算結果與瀏覽器資料；不包含 Cookie 或登入資料。</small></span></label>
+      <details class="report-preview" id="reportPreview"><summary>查看將附上的資料</summary><pre id="reportStatePreview"></pre></details>
+      <p class="report-notice" id="reportNotice" hidden></p>
+      <div class="report-actions"><button id="copyReport" type="button">複製回報內容</button><button class="report-send" type="submit">開啟 Email 寄出</button></div>
+    </form>
+  </dialog>
+
+  <dialog class="support-dialog" id="supportDialog" aria-labelledby="supportTitle">
+    <div class="support-head">
+      <div><span class="eyebrow">SUPPORT</span><h2 id="supportTitle">小額支持這個工具</h2></div>
+      <button id="closeSupport" type="button" aria-label="關閉小額支持">×</button>
+    </div>
+    <p>如果這個裁切工具有幫上忙，歡迎隨喜支持後續維護。</p>
+    <div class="support-status"><b>金額隨喜，自由填寫</b><span>點擊下方按鍵前往綠界科技官方頁面，再依心意填寫任意支持金額。本網頁不會收集付款或信用卡資料。</span></div>
+    <button class="support-pay" id="supportPay" type="button">前往綠界隨喜支持</button>
+  </dialog>
+
+  <footer><span>© 2026 裁得好</span><span>尺寸計算僅供估算，實際裁切請預留刀縫。</span><div class="footer-actions"><button id="openSupport" type="button">小額支持</button><button id="openReport" type="button">回報問題／建議功能</button></div></footer>
+  <script src="app.js?v=39"></script>
+  <script src="i18n.js?v=39"></script>
+</body>
+</html>
