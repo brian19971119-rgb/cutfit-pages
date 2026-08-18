@@ -139,10 +139,28 @@ function verifyRenderedPlan(view){
   if(expected!==actual)throw new Error(`裁切方案張數不一致：預期 ${expected}，實際 ${actual}`);
 }
 
-function buildSheetPlanSwitch(sheets,capacity,lastCount,capacityPlan,lastPlan,pw,ph){
+function buildSheetPlanSwitch(sheets,capacity,lastCount,capacityPlan,lastPlan,pw,ph,orientationAlt){
   const switcher=$('sheetPlanSwitch');switcher.replaceChildren();sheetPlanViews=[];
   const fullSheets=sheets-(lastCount<capacity?1:0);
-  if(fullSheets>0)sheetPlanViews.push({plan:capacityPlan,pw,ph,repeatCount:fullSheets,description:`標準裁法：使用 ${fullSheets} 張原紙，每張裁 ${capacity} 張${capacityPlan.shortFirst?'，短邊優先':''}`,stepTitle:`標準裁法重複 ${fullSheets} 次`,stepDetail:`這個配置使用 ${fullSheets} 張原紙，每張都照同一個刀序裁 ${capacity} 張。`,label:'標準裁法',sub:`使用 ${fullSheets} 張，每張裁 ${capacity} 張`});
+  const standardView=plan=>({plan,pw,ph,repeatCount:fullSheets,description:`標準裁法：使用 ${fullSheets} 張原紙，每張裁 ${capacity} 張${plan.shortFirst?'，短邊優先':''}`,stepTitle:`標準裁法重複 ${fullSheets} 次`,stepDetail:`這個配置使用 ${fullSheets} 張原紙，每張都照同一個刀序裁 ${capacity} 張。`,label:(plan.rects[0].w>=plan.rects[0].h)?'橫式排版':'直式排版',sub:`使用 ${fullSheets} 張，每張裁 ${capacity} 張`});
+  if(orientationAlt){
+    switcher.hidden=true;
+    sheetPlanViews.push(standardView(orientationAlt),standardView(capacityPlan));
+    sheetPlanViews.forEach(verifyRenderedPlan);
+    renderLayoutGallery([]);
+    const bar=$('layoutChoiceBar');bar.replaceChildren();bar.hidden=false;
+    const title=document.createElement('span');title.textContent='切換排版方向';bar.appendChild(title);
+    sheetPlanViews.forEach((view,index)=>{
+      const button=document.createElement('button');button.type='button';
+      button.innerHTML=`<b>${view.label}</b><small>${capacity} 張・利用率 ${fmt(capacityPlan.usage*100)}%</small>`;
+      button.addEventListener('click',()=>{showSheetPlan(index);bar.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('active',i===index));});
+      bar.appendChild(button);
+    });
+    bar.querySelectorAll('button')[sheetPlanViews.length-1].classList.add('active');
+    showSheetPlan(sheetPlanViews.length-1);
+    return;
+  }
+  if(fullSheets>0)sheetPlanViews.push(standardView(capacityPlan));
   if(lastCount<capacity)sheetPlanViews.push({plan:lastPlan,pw,ph,description:`最後一張特殊裁法：只裁 ${lastCount} 張，保留較好再利用的餘紙${lastPlan.shortFirst?'，短邊優先':''}`,stepTitle:'最後一張使用特殊裁法',stepDetail:`上方已同時列出標準配置；這裡播放最後一張只裁 ${lastCount} 張的刀序。`,label:'最後一張特殊裁法',sub:`只裁 ${lastCount} 張`});
   switcher.hidden=true;sheetPlanViews.forEach(verifyRenderedPlan);renderLayoutGallery(sheetPlanViews);showSheetPlan(sheetPlanViews.length-1);
 }
@@ -155,6 +173,11 @@ function renderSheet(){
   const capacityPlan=makePlan(pw,ph,tw,th,$('allowRotate').checked,shortFirst);
   if(!capacityPlan){currentPlan=null;currentPaper=null;stopCutAnimation();$('pieces').textContent='0';$('sheets').textContent='—';$('usage').textContent='0%';$('waste').textContent='成品大於原紙';$('layoutCanvas').replaceChildren();$('planDescription').textContent='目前尺寸無法裁出';return;}
   const sheets=Math.ceil(qty/capacityPlan.count),lastCount=qty-(sheets-1)*capacityPlan.count;
+  let orientationAlt=null;
+  if($('allowRotate').checked&&Math.abs(tw-th)>1e-7&&sheets===1&&lastCount===capacityPlan.count){
+    const alt=makePlan(pw,ph,th,tw,false,shortFirst);
+    if(alt&&alt.count===capacityPlan.count&&(Math.abs(alt.rects[0].w-capacityPlan.rects[0].w)>1e-7||Math.abs(alt.rects[0].h-capacityPlan.rects[0].h)>1e-7))orientationAlt=alt;
+  }
   let plan=lastCount<capacityPlan.count?makeExactPlan(pw,ph,tw,th,lastCount,$('allowRotate').checked,shortFirst):capacityPlan;
   if(!plan&&lastCount<capacityPlan.count){
     plan=makeReusableSubsetPlan(capacityPlan,lastCount,pw,ph,tw,th,shortFirst);
@@ -169,7 +192,7 @@ function renderSheet(){
   $('feasibilityText').textContent=`只裁 ${qty} 張，不會為了填滿原紙而多裁。${plan.remainder?`最大可保留約 ${remainderText} 的完整紙張。`:''}`;
   $('measureW').textContent=`${fmt(fromMm(pw))} ${currentUnit}`;$('measureH').textContent=`${fmt(fromMm(ph))} ${currentUnit}`;
   $('tipText').textContent='配置圖上的橘色虛線是第一刀預覽。按「播放裁切順序」後，橘色線會依照每一刀的位置逐步出現。';
-  buildSheetPlanSwitch(sheets,capacityPlan.count,lastCount,capacityPlan,plan,pw,ph);
+  buildSheetPlanSwitch(sheets,capacityPlan.count,lastCount,capacityPlan,plan,pw,ph,orientationAlt);
 }
 
 function parseBatchInput(text){
