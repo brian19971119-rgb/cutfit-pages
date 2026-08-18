@@ -105,6 +105,13 @@ function showSheetPlan(index){
   $('planDescription').textContent=view.description;$('arrangement').textContent=view.plan.detail;
   const canvas=$('layoutCanvas'),isRoll=!!view.plan.isRoll,displayPw=isRoll?view.ph:view.pw,displayPh=isRoll?view.pw:view.ph;canvas.replaceChildren();canvas.classList.toggle('mixed-roll',!!view.plan.mixedRoll);canvas.classList.toggle('roll-horizontal',isRoll);canvas.closest('.canvas-wrap').classList.toggle('mixed-roll-wrap',!!view.plan.mixedRoll);canvas.closest('.canvas-wrap').classList.toggle('roll-horizontal-wrap',isRoll);canvas.closest('.current-layout').classList.toggle('roll-horizontal-layout',isRoll);const scale=isRoll?Math.min(760/displayPw,250/displayPh):(sheetPlanViews.length>1?Math.min(300/displayPw,220/displayPh):Math.min(560/displayPw,260/displayPh));canvas.style.width=`${displayPw*scale}px`;canvas.style.height=`${displayPh*scale}px`;
   view.plan.rects.forEach(r=>{const d=isRoll?{x:r.y,y:r.x,w:r.h,h:r.w}:r,el=document.createElement('div');el.className=`cut-piece${r.rotated?' rotated':''}`;el.style.cssText=`left:${d.x/displayPw*100}%;top:${d.y/displayPh*100}%;width:${d.w/displayPw*100}%;height:${d.h/displayPh*100}%`;if(view.plan.mixedRoll){el.innerHTML=`<b>${r.jobIndex+1}-${r.pieceNumber}${r.rotated?' 90°':''}</b><small>${fmt(fromMm(r.targetW))}×${fmt(fromMm(r.targetH))}</small>`;el.title=`第 ${r.jobIndex+1} 種尺寸・第 ${r.pieceNumber} 張・${fmt(fromMm(r.targetW))} × ${fmt(fromMm(r.targetH))} ${currentUnit}${r.rotated?'・已旋轉 90°':'・未旋轉'}`;}else el.textContent=r.n;canvas.appendChild(el);});
+  const rem=view.plan.remainder;
+  if(!isRoll&&rem&&rem.x!==undefined&&rem.w>.01&&rem.h>.01){
+    const el=document.createElement('div');el.className='remainder-highlight';
+    el.style.cssText=`left:${rem.x/displayPw*100}%;top:${rem.y/displayPh*100}%;width:${rem.w/displayPw*100}%;height:${rem.h/displayPh*100}%`;
+    el.innerHTML=`<b>可保留餘紙<br>${fmt(fromMm(rem.w))}×${fmt(fromMm(rem.h))} ${currentUnit}</b>`;
+    canvas.appendChild(el);
+  }
   const currentLayout=canvas.closest('.current-layout');currentLayout.querySelector('.sheet-count-visual')?.remove();
   if(!isRoll&&view.repeatCount>1){
     const visual=document.createElement('div');visual.className='sheet-count-visual';visual.tabIndex=0;visual.setAttribute('role','button');visual.setAttribute('aria-expanded','false');visual.setAttribute('aria-label',`共使用 ${view.repeatCount} 張原紙；移入或點一下可展開`);
@@ -154,7 +161,7 @@ function buildSheetPlanSwitch(sheets,capacity,lastCount,capacityPlan,lastPlan,pw
       const button=document.createElement('button');button.type='button';
       const recommended=index===sheetPlanViews.length-1,remainder=view.plan.remainder;
       button.classList.toggle('recommended',recommended);
-      button.innerHTML=`<b>${view.label}${recommended?'・較好利用餘料':''}</b><small>${capacity} 張・可保留 ${fmt(fromMm(remainder.w))}×${fmt(fromMm(remainder.h))} ${currentUnit} 餘紙</small>`;
+      button.innerHTML=`<b>${view.label}${recommended?'・餘料較好利用':''}</b><small>${capacity} 張</small><span class="remainder-size">可保留 ${fmt(fromMm(remainder.w))}×${fmt(fromMm(remainder.h))} ${currentUnit}</span>`;
       button.addEventListener('click',()=>{showSheetPlan(index);bar.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('active',i===index));});
       bar.appendChild(button);
     });

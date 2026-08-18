@@ -49,13 +49,13 @@ function makeExactPlan(pw,ph,tw,th,count,rotate,shortFirst=false){
     for(let cols=1;cols<=Math.min(maxCols,count);cols++){
       const rows=Math.ceil(count/cols);if(rows>maxRows)continue;
       const rects=[];for(let col=0;col<cols;col++){const inCol=Math.min(rows,count-rects.length);for(let row=0;row<inCol;row++)rects.push({x:col*w,y:row*h,w,h,rotated,n:rects.length+1});}
-      const right={w:pw-cols*w,h:ph},bottom={w:cols*w,h:ph-rows*h},remainder=right.w*right.h>=bottom.w*bottom.h?right:bottom;
+      const right={x:cols*w,y:0,w:pw-cols*w,h:ph},bottom={x:0,y:rows*h,w:cols*w,h:ph-rows*h},remainder=right.w*right.h>=bottom.w*bottom.h?right:bottom;
       if(rects.length===count)plans.push({name:'保留較好再利用的餘紙',rects,detail:`${cols} 欄，共 ${rects.length} 張`,strategy:'vertical',count:rects.length,usage:rects.length*tw*th/(pw*ph),bandSize:w,shortPreferred:Math.abs(ph-Math.min(pw,ph))<.01,shortFirst,orientationMismatch,remainder:{...remainder,...remainderValue(remainder)}});
     }
     for(let rows=1;rows<=Math.min(maxRows,count);rows++){
       const cols=Math.ceil(count/rows);if(cols>maxCols)continue;
       const rects=[];for(let row=0;row<rows;row++){const inRow=Math.min(cols,count-rects.length);for(let col=0;col<inRow;col++)rects.push({x:col*w,y:row*h,w,h,rotated,n:rects.length+1});}
-      const bottom={w:pw,h:ph-rows*h},right={w:pw-cols*w,h:rows*h},remainder=bottom.w*bottom.h>=right.w*right.h?bottom:right;
+      const bottom={x:0,y:rows*h,w:pw,h:ph-rows*h},right={x:cols*w,y:0,w:pw-cols*w,h:rows*h},remainder=bottom.w*bottom.h>=right.w*right.h?bottom:right;
       if(rects.length===count)plans.push({name:'保留較好再利用的餘紙',rects,detail:`${rows} 列，共 ${rects.length} 張`,strategy:'horizontal',count:rects.length,usage:rects.length*tw*th/(pw*ph),bandSize:h,shortPreferred:Math.abs(pw-Math.min(pw,ph))<.01,shortFirst,orientationMismatch,remainder:{...remainder,...remainderValue(remainder)}});
     }
   };
