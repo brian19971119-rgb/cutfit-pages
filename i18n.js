@@ -572,7 +572,6 @@ Object.assign(dictionaries["ja"],{
   "橫向分條後裁切": "横縞加工後の切断",
   " 欄，共 ": "列、合計",
   " 列，共 ": "列、合計",
-  "指定裁 ": "指定審判員",
   " 張，保留較方正餘紙": "シートの場合は、正方形の残りの紙を残しておきます",
   "分開第 ": "別",
   "從紙卷起點量 ": "ロール紙の始点から測定します",
@@ -789,7 +788,17 @@ const source=new WeakMap(),attributeSource=new WeakMap();
 const pageTitles={'zh-TW':'裁得好 — 紙張裁切最佳化','zh-CN':'CutFit — 纸张裁切优化',en:'CutFit — Paper Cutting Optimizer',ja:'CutFit — 用紙裁断最適化',ko:'CutFit — 종이 재단 최적화',th:'CutFit — เครื่องมือปรับการตัดกระดาษ'};
 const observerOptions={subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['placeholder','title','aria-label']};
 function localeFromBrowser(){const lang=(navigator.language||'zh-TW').toLowerCase();if(lang.startsWith('zh-cn')||lang.startsWith('zh-sg'))return'zh-CN';if(lang.startsWith('ja'))return'ja';if(lang.startsWith('ko'))return'ko';if(lang.startsWith('th'))return'th';if(lang.startsWith('en'))return'en';return'zh-TW';}
-function translateString(value,locale){if(locale==='zh-TW')return value;const dict=dictionaries[locale];let result=value;Object.keys(dict).sort((a,b)=>b.length-a.length).forEach(key=>{result=result.split(key).join(dict[key]);});return result;}
+const matcherCache=new Map();
+function getMatcher(locale){
+  if(matcherCache.has(locale))return matcherCache.get(locale);
+  const dict=dictionaries[locale],keys=Object.keys(dict).sort((a,b)=>b.length-a.length);
+  const matcher=keys.length?new RegExp(keys.map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'),'g'):null;
+  matcherCache.set(locale,matcher);
+  return matcher;
+}
+// 用單一次 regex 掃描原字串取代逐一 split/join：後者會在已翻譯好的片段上再次比對字典，
+// 一旦翻譯結果剛好包含另一個較短的中文字典鍵，就會把已翻好的內容再誤譯一次。
+function translateString(value,locale){if(locale==='zh-TW')return value;const dict=dictionaries[locale],matcher=getMatcher(locale);if(!matcher)return value;return value.replace(matcher,match=>dict[match]);}
 function apply(locale){observer?.disconnect();document.documentElement.lang=locale;document.documentElement.dir='ltr';document.title=pageTitles[locale];select.value=locale;document.querySelectorAll('body *:not(script):not(style)').forEach(el=>{el.childNodes.forEach(node=>{if(node.nodeType===3&&node.nodeValue.trim()){if(!source.has(node))source.set(node,node.nodeValue);const next=translateString(source.get(node),locale);if(node.nodeValue!==next)node.nodeValue=next;}});['placeholder','title','aria-label'].forEach(attr=>{if(el.hasAttribute(attr)){let attrs=attributeSource.get(el);if(!attrs){attrs={};attributeSource.set(el,attrs);}if(!(attr in attrs))attrs[attr]=el.getAttribute(attr);const next=translateString(attrs[attr],locale);if(el.getAttribute(attr)!==next)el.setAttribute(attr,next);}});});observer?.observe(document.body,observerOptions);}
 let locale=localStorage.getItem('cutfit-language');if(!supported.includes(locale))locale=localeFromBrowser();apply(locale);
 select.addEventListener('change',()=>{locale=select.value;localStorage.setItem('cutfit-language',locale);apply(locale);});
