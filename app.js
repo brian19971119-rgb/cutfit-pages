@@ -184,7 +184,21 @@ function renderSheet(){
   if(![pw,ph,tw,th].every(n=>n>0))return;
   const shortFirst=$('shortEdgeFirst').checked;
   const capacityPlan=makePlan(pw,ph,tw,th,$('allowRotate').checked,shortFirst);
-  if(!capacityPlan){currentPlan=null;currentPaper=null;stopCutAnimation();$('pieces').textContent='0';$('sheets').textContent='—';$('usage').textContent='0%';$('waste').textContent='成品大於原紙';$('layoutCanvas').replaceChildren();$('planDescription').textContent='目前尺寸無法裁出';return;}
+  if(!capacityPlan){
+    currentPlan=null;currentPaper=null;stopCutAnimation();
+    $('pieces').textContent='0';$('sheets').textContent='—';$('capacity').textContent='—';$('usage').textContent='0%';$('waste').textContent='成品大於原紙';
+    $('arrangement').textContent='—';$('actual').textContent='—';$('extra').textContent='—';$('extraLabel').textContent='較實用完整餘紙';
+    $('currentLayoutLabel').textContent='';$('planDescription').textContent='目前尺寸無法裁出';
+    $('layoutCanvas').replaceChildren();$('layoutCanvas').style.width='';$('layoutCanvas').style.height='';$('sequenceList').replaceChildren();$('playCuts').disabled=true;
+    $('stepBadge').textContent='準備';$('stepTitle').textContent='按下播放開始模擬';$('stepDetail').textContent='會依照建議順序顯示每一道裁線。';
+    $('measureW').textContent=`${fmt(fromMm(pw))} ${currentUnit}`;$('measureH').textContent=`${fmt(fromMm(ph))} ${currentUnit}`;
+    sheetPlanViews=[];renderLayoutGallery([]);$('layoutChoiceBar').hidden=true;$('layoutChoiceBar').replaceChildren();
+    const wouldFitRotated=!$('allowRotate').checked&&makePlan(pw,ph,tw,th,true,shortFirst);
+    document.querySelector('.feasibility').classList.add('not-enough');
+    $('feasibilityTitle').textContent='成品尺寸大於原紙，無法裁出';
+    $('feasibilityText').textContent=`成品 ${fmt(fromMm(tw))} × ${fmt(fromMm(th))} ${currentUnit} 比原紙 ${fmt(fromMm(pw))} × ${fmt(fromMm(ph))} ${currentUnit} 還大，目前方向放不下。${wouldFitRotated?'勾選「允許旋轉 90°」後就可以裁出。':'請縮小成品尺寸，或換一張更大的原紙。'}`;
+    return;
+  }
   const sheets=Math.ceil(qty/capacityPlan.count),lastCount=qty-(sheets-1)*capacityPlan.count;
   let orientationChoices=null;
   if($('allowRotate').checked&&Math.abs(tw-th)>1e-7&&sheets===1&&lastCount===capacityPlan.count){
