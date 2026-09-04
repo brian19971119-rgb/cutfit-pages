@@ -117,3 +117,21 @@ textarea,
     transform: scale(.78) !important;
   }
 }
+
+/* Keep every roll-width preset inside the narrow settings column. */
+.roll-width-line {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.roll-width-presets {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: 100%;
+  gap: 6px !important;
+  margin: 8px 0 0 !important;
+}
+
+.roll-width-presets button {
+  min-width: 0 !important;
+}
