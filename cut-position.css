@@ -2,5 +2,19 @@
 .cut-sequence li { max-width:290px; white-space:normal; }
 .cut-position-note { margin:12px 0 0; color:var(--muted); font:400 13px/1.6 system-ui,sans-serif; }
 .sequence-status > div { min-width:0; }
-.cut-measure-label { position:absolute; z-index:6; transform:translate(-50%,-50%); display:none; padding:4px 8px; border:1px solid #934016; border-radius:5px; background:#fff8ec; color:#75300e; box-shadow:0 2px 5px #0002; font:700 14px/1.4 system-ui,sans-serif; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.cut-measure-label { position:absolute; z-index:6; display:none; color:#934016; font:700 14px/1.4 system-ui,sans-serif; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .cut-measure-label.current,.cut-measure-label.first-preview { display:block; }
+.cut-measure-label::before,.cut-measure-label::after { content:""; position:absolute; }
+.dimension-horizontal { left:-40px; width:40px; border-left:1px dashed currentColor; }
+.dimension-horizontal::before,.dimension-horizontal::after { left:-5px; width:45px; border-top:1px solid currentColor; }
+.dimension-horizontal::before { top:0; }
+.dimension-horizontal::after { bottom:0; }
+.dimension-vertical { top:-36px; left:0; height:36px; border-top:1px dashed currentColor; }
+.dimension-vertical::before,.dimension-vertical::after { top:-5px; height:41px; border-left:1px solid currentColor; }
+.dimension-vertical::before { left:0; }
+.dimension-vertical::after { right:0; }
+.dimension-value { position:absolute; background:#fffdf8; padding:2px 5px; }
+.dimension-horizontal .dimension-value { left:0; top:50%; transform:translate(-50%,-50%) rotate(-90deg); }
+.dimension-vertical .dimension-value { left:50%; top:0; transform:translate(-50%,-50%); }
+/* Reserve real space for the exterior dimensions, including on narrow screens. */
+.canvas-wrap .current-layout { padding:88px 32px 36px 96px; }
