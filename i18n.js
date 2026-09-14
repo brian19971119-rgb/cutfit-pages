@@ -783,6 +783,16 @@ Object.assign(dictionaries["th"],{
 });
 Object.assign(dictionaries["zh-CN"],{});
 
+const positionNote='定位以圖中未裁開的原紙為準，單位固定為 cm；不是裁開後小紙片的邊緣。請先在原紙標記位置，並預留刀縫與量測誤差。';
+const positionTranslations={
+  'zh-CN':['原纸底边往上：','原纸左边往右：','定位以图中未裁开的原纸为准，单位固定为 cm；不是裁开后小纸片的边缘。请先在原纸标记位置，并预留刀缝与测量误差。'],
+  en:['From original bottom edge ↑: ','From original left edge →: ','Positions refer to the uncut sheet as shown, always in cm—not the edges of separated pieces. Mark the original sheet first; allow for blade kerf and measurement error.'],
+  ja:['原紙の下端から上へ：','原紙の左端から右へ：','位置は図の未裁断の原紙を基準とし、単位は常に cm です。切り離した紙片の端が基準ではありません。原紙に先に印を付け、刃幅と測定誤差を考慮してください。'],
+  ko:['원지 아래 가장자리에서 위로: ','원지 왼쪽 가장자리에서 오른쪽으로: ','위치는 그림의 자르기 전 원지를 기준으로 하며 단위는 항상 cm입니다. 잘라낸 조각의 가장자리가 기준이 아닙니다. 원지에 먼저 표시하고 칼날 폭과 측정 오차를 고려하세요.'],
+  th:['จากขอบล่างของกระดาษเดิมขึ้นไป: ','จากขอบซ้ายของกระดาษเดิมไปทางขวา: ','ตำแหน่งอ้างอิงจากกระดาษที่ยังไม่ตัดตามภาพ ใช้หน่วย cm เสมอ ไม่ใช่ขอบของชิ้นที่ตัดแยกแล้ว โปรดทำเครื่องหมายบนกระดาษเดิมก่อน และเผื่อความกว้างรอยตัดกับความคลาดเคลื่อนในการวัด']
+};
+Object.entries(positionTranslations).forEach(([locale,values])=>Object.assign(dictionaries[locale],{'原紙底邊往上：':values[0],'原紙左邊往右：':values[1],[positionNote]:values[2]}));
+Object.entries({'zh-CN':'裁线方向与定位以图中原纸为准。',en:'Cut direction and position refer to the original sheet as shown.',ja:'裁断方向と位置は図の原紙を基準とします。',ko:'재단 방향과 위치는 그림의 원지를 기준으로 합니다.',th:'ทิศทางและตำแหน่งตัดอ้างอิงจากกระดาษเดิมตามภาพ'}).forEach(([locale,text])=>dictionaries[locale]['裁線方向與定位以圖中原紙為準。']=text);
 const supported=Object.keys(dictionaries),select=document.getElementById('languageSelect');let observer;
 const source=new WeakMap(),attributeSource=new WeakMap();
 const pageTitles={'zh-TW':'裁得好 — 紙張裁切最佳化','zh-CN':'CutFit — 纸张裁切优化',en:'CutFit — Paper Cutting Optimizer',ja:'CutFit — 用紙裁断最適化',ko:'CutFit — 종이 재단 최적화',th:'CutFit — เครื่องมือปรับการตัดกระดาษ'};
@@ -802,6 +812,7 @@ function translateString(value,locale){if(locale==='zh-TW')return value;const di
 function apply(locale){observer?.disconnect();document.documentElement.lang=locale;document.documentElement.dir='ltr';document.title=pageTitles[locale];select.value=locale;document.querySelectorAll('body *:not(script):not(style)').forEach(el=>{el.childNodes.forEach(node=>{if(node.nodeType===3&&node.nodeValue.trim()){if(!source.has(node))source.set(node,node.nodeValue);const next=translateString(source.get(node),locale);if(node.nodeValue!==next)node.nodeValue=next;}});['placeholder','title','aria-label'].forEach(attr=>{if(el.hasAttribute(attr)){let attrs=attributeSource.get(el);if(!attrs){attrs={};attributeSource.set(el,attrs);}if(!(attr in attrs))attrs[attr]=el.getAttribute(attr);const next=translateString(attrs[attr],locale);if(el.getAttribute(attr)!==next)el.setAttribute(attr,next);}});});observer?.observe(document.body,observerOptions);}
 let locale=localStorage.getItem('cutfit-language');if(!supported.includes(locale))locale=localeFromBrowser();apply(locale);
 select.addEventListener('change',()=>{locale=select.value;localStorage.setItem('cutfit-language',locale);apply(locale);});
-observer=new MutationObserver(records=>{records.forEach(r=>{if(r.type==='characterData')source.set(r.target,r.target.nodeValue);if(r.type==='attributes'){let attrs=attributeSource.get(r.target);if(!attrs){attrs={};attributeSource.set(r.target,attrs);}attrs[r.attributeName]=r.target.getAttribute(r.attributeName);}});requestAnimationFrame(()=>apply(locale));});
+let translationFramePending=false;
+observer=new MutationObserver(records=>{records.forEach(r=>{if(r.type==='characterData')source.set(r.target,r.target.nodeValue);if(r.type==='attributes'){let attrs=attributeSource.get(r.target);if(!attrs){attrs={};attributeSource.set(r.target,attrs);}attrs[r.attributeName]=r.target.getAttribute(r.attributeName);}});if(!translationFramePending){translationFramePending=true;requestAnimationFrame(()=>{translationFramePending=false;apply(locale);});}});
 observer.observe(document.body,observerOptions);
 })();

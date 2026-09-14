@@ -1,0 +1,4 @@
+.cut-position { display:block; margin-top:6px; color:#934016; font:600 14px/1.5 system-ui,sans-serif; overflow-wrap:anywhere; }
+.cut-sequence li { max-width:290px; white-space:normal; }
+.cut-position-note { margin:12px 0 0; color:var(--muted); font:400 13px/1.6 system-ui,sans-serif; }
+.sequence-status > div { min-width:0; }

@@ -70,14 +70,18 @@ function prepareCutSequence(plan,pw,ph){
   const list=$('sequenceList');list.replaceChildren();
   const cuts=buildCutSequence(plan,pw,ph),displayPw=plan.isRoll?ph:pw,displayPh=plan.isRoll?pw:ph;
   cuts.forEach((originalCut,index)=>{
-    const cut=plan.isRoll?{...originalCut,orientation:originalCut.orientation==='vertical'?'horizontal':'vertical'}:originalCut;
+    const position=getCutPosition(originalCut,plan.isRoll,pw,ph);
+    const cut={...originalCut,orientation:position.orientation};
+    originalCut.positionText=`${position.reference}${position.cm} cm`;
     cut.segments.forEach(segment=>{const line=document.createElement('i');line.className=`cut-line ${cut.orientation}`;line.dataset.step=index+1;
       if(cut.orientation==='vertical')line.style.cssText=`left:${cut.pos/displayPw*100}%;top:${segment.start/displayPh*100}%;height:${(segment.end-segment.start)/displayPh*100}%`;
       else line.style.cssText=`top:${cut.pos/displayPh*100}%;left:${segment.start/displayPw*100}%;width:${(segment.end-segment.start)/displayPw*100}%`;
       canvas.appendChild(line);});
-    const item=document.createElement('li');item.innerHTML=`<b>第 ${index+1} 刀 · ${cut.segments.length>1?'共同切':cut.orientation==='vertical'?'直切':'橫切'}</b>${cut.title}`;list.appendChild(item);
+    const item=document.createElement('li');item.innerHTML=`<b>第 ${index+1} 刀 · ${cut.segments.length>1?'共同切':cut.orientation==='vertical'?'直切':'橫切'}</b>${cut.title}`;
+    const measurement=document.createElement('strong');measurement.className='cut-position';measurement.textContent=originalCut.positionText;item.appendChild(measurement);list.appendChild(item);
   });
   canvas.querySelectorAll('[data-step="1"]').forEach(line=>line.classList.add('first-preview'));
+  $('cutPosition').textContent=cuts[0]?.positionText||'';
   $('stepBadge').textContent=`${cuts.length} 刀`;$('stepBadge').classList.remove('active');
   $('stepTitle').textContent='這個方案每一刀都會切斷紙張';
   $('stepDetail').textContent=plan.shortFirst?`已啟用短邊優先，第一刀會橫跨原紙較短的一邊，再切成成品。`:(plan.strategy==='horizontal'?'第一階段先橫向分成長條，第二階段再把每條紙切成成品。':'第一階段先直向分成長條，第二階段再把每條紙切成成品。');
@@ -96,7 +100,8 @@ function playCutSequence(){
     lines.forEach(x=>x.classList.remove('current'));items.forEach(x=>x.classList.remove('current'));
     lines.filter(x=>Number(x.dataset.step)===index+1).forEach(x=>x.classList.add('revealed','current'));items[index].classList.add('current');items.slice(0,index).forEach(x=>x.classList.add('done'));
     items[index].scrollIntoView({behavior:reduced?'auto':'smooth',block:'nearest',inline:'center'});
-    $('stepBadge').textContent=`${index+1} / ${cuts.length}`;$('stepBadge').classList.add('active');$('stepTitle').textContent=cut.title;$('stepDetail').textContent=cut.detail;
+    $('stepBadge').textContent=`${index+1} / ${cuts.length}`;$('stepBadge').classList.add('active');$('stepTitle').textContent=cut.title;$('stepDetail').textContent=currentPlan.isRoll?'裁線方向與定位以圖中原紙為準。':cut.detail;
+    $('cutPosition').textContent=cut.positionText;
     if(index===cuts.length-1)cutTimers.push(setTimeout(()=>{$('stepBadge').textContent='完成';$('stepTitle').textContent='裁切完成';$('stepDetail').textContent=currentPlan.isRoll&&currentPlan.rows>12?`已示範前 12 排；實際共需 ${currentPlan.rows} 排、${currentPlan.count} 張成品。`:`這份原料可得到 ${currentPlan.count} 張成品。`;items[index].classList.add('done');stopCutAnimation();$('playCuts').querySelector('span').textContent='重播裁切順序';$('playCuts').setAttribute('aria-label','重播裁切順序');},reduced?100:800));
   },index*interval)));
 }

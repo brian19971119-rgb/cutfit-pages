@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&amp;family=Roboto+Mono:wght@500;600&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=29" />
   <link rel="stylesheet" href="animation.css?v=29" />
+  <link rel="stylesheet" href="cut-position.css?v=1" />
   <link rel="stylesheet" href="layout-fix.css?v=29" />
   <link rel="stylesheet" href="readability.css?v=29" />
   <link rel="stylesheet" href="modes.css?v=29" />
@@ -189,9 +190,10 @@
           <div class="cut-sequence" id="cutSequence">
             <div class="sequence-status">
               <span class="step-badge" id="stepBadge">準備</span>
-              <div><b id="stepTitle">按下播放開始模擬</b><p id="stepDetail">會依照建議順序顯示每一道裁線。</p></div>
+              <div><b id="stepTitle">按下播放開始模擬</b><p id="stepDetail">會依照建議順序顯示每一道裁線。</p><strong id="cutPosition" class="cut-position" aria-live="polite"></strong></div>
             </div>
             <ol id="sequenceList" aria-label="裁切順序清單"></ol>
+            <p class="cut-position-note">定位以圖中未裁開的原紙為準，單位固定為 cm；不是裁開後小紙片的邊緣。請先在原紙標記位置，並預留刀縫與量測誤差。</p>
           </div>
         </div>
 
@@ -257,7 +259,8 @@
 
   <footer><span>© 2026 裁得好</span><span>尺寸計算僅供估算，實際裁切請預留刀縫。</span><div class="footer-actions"><button id="openSupport" type="button">小額支持</button><button id="openReport" type="button">回報問題／建議功能</button></div></footer>
   <script src="planner.js?v=3"></script>
-  <script src="app.js?v=46"></script>
-  <script src="i18n.js?v=41"></script>
+  <script src="cut-position.js?v=1"></script>
+  <script src="app.js?v=47"></script>
+  <script src="i18n.js?v=42"></script>
 </body>
 </html>
