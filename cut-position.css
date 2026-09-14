@@ -2,3 +2,5 @@
 .cut-sequence li { max-width:290px; white-space:normal; }
 .cut-position-note { margin:12px 0 0; color:var(--muted); font:400 13px/1.6 system-ui,sans-serif; }
 .sequence-status > div { min-width:0; }
+.cut-measure-label { position:absolute; z-index:6; transform:translate(-50%,-50%); display:none; padding:4px 8px; border:1px solid #934016; border-radius:5px; background:#fff8ec; color:#75300e; box-shadow:0 2px 5px #0002; font:700 14px/1.4 system-ui,sans-serif; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.cut-measure-label.current,.cut-measure-label.first-preview { display:block; }

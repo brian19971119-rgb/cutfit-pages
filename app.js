@@ -66,7 +66,7 @@ function stopCutByUser(){
 
 function prepareCutSequence(plan,pw,ph){
   stopCutAnimation();
-  const canvas=$('layoutCanvas');canvas.querySelectorAll('.cut-line').forEach(el=>el.remove());
+  const canvas=$('layoutCanvas');canvas.querySelectorAll('.cut-line,.cut-measure-label').forEach(el=>el.remove());
   const list=$('sequenceList');list.replaceChildren();
   const cuts=buildCutSequence(plan,pw,ph),displayPw=plan.isRoll?ph:pw,displayPh=plan.isRoll?pw:ph;
   cuts.forEach((originalCut,index)=>{
@@ -77,6 +77,16 @@ function prepareCutSequence(plan,pw,ph){
       if(cut.orientation==='vertical')line.style.cssText=`left:${cut.pos/displayPw*100}%;top:${segment.start/displayPh*100}%;height:${(segment.end-segment.start)/displayPh*100}%`;
       else line.style.cssText=`top:${cut.pos/displayPh*100}%;left:${segment.start/displayPw*100}%;width:${(segment.end-segment.start)/displayPw*100}%`;
       canvas.appendChild(line);});
+    // One label per cut, anchored to its longest segment (including shared cuts).
+    const segment=cut.segments.reduce((longest,s)=>s.end-s.start>longest.end-longest.start?s:longest);
+    const midpoint=(segment.start+segment.end)/2;
+    const label=document.createElement('span');label.className='cut-measure-label';label.dataset.step=index+1;
+    label.textContent=`${cut.orientation==='horizontal'?'↑':'→'} ${position.cm} cm`;
+    label.title=originalCut.positionText;label.setAttribute('aria-label',originalCut.positionText);
+    const x=cut.orientation==='vertical'?cut.pos:midpoint,y=cut.orientation==='horizontal'?cut.pos:midpoint;
+    label.style.left=`clamp(48px, ${x/displayPw*100}%, calc(100% - 48px))`;
+    label.style.top=`clamp(18px, ${y/displayPh*100}%, calc(100% - 18px))`;
+    canvas.appendChild(label);
     const item=document.createElement('li');item.innerHTML=`<b>第 ${index+1} 刀 · ${cut.segments.length>1?'共同切':cut.orientation==='vertical'?'直切':'橫切'}</b>${cut.title}`;
     const measurement=document.createElement('strong');measurement.className='cut-position';measurement.textContent=originalCut.positionText;item.appendChild(measurement);list.appendChild(item);
   });
@@ -92,7 +102,7 @@ function prepareCutSequence(plan,pw,ph){
 function playCutSequence(){
   if(!currentPlan||!currentPaper)return;
   const cuts=prepareCutSequence(currentPlan,currentPaper.pw,currentPaper.ph);
-  const lines=[...$('layoutCanvas').querySelectorAll('.cut-line')],items=[...$('sequenceList').children];
+  const lines=[...$('layoutCanvas').querySelectorAll('.cut-line,.cut-measure-label')],items=[...$('sequenceList').children];
   lines.forEach(line=>line.classList.remove('first-preview'));
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches,interval=reduced?80:1150;
   isCutPlaying=true;$('playCuts').classList.add('is-playing');$('playCuts').querySelector('span').textContent='停止播放';$('playCuts').setAttribute('aria-label','停止播放裁切順序');
