@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="styles.css?v=29" />
   <link rel="stylesheet" href="animation.css?v=29" />
   <link rel="stylesheet" href="cut-position.css?v=3" />
+  <link rel="stylesheet" href="visitor-counter.css?v=1" />
   <link rel="stylesheet" href="layout-fix.css?v=29" />
   <link rel="stylesheet" href="readability.css?v=29" />
   <link rel="stylesheet" href="modes.css?v=29" />
@@ -257,10 +258,11 @@
     <button class="support-pay" id="supportPay" type="button">前往綠界隨喜支持</button>
   </dialog>
 
-  <footer><span>© 2026 裁得好</span><span>尺寸計算僅供估算，實際裁切請預留刀縫。</span><div class="footer-actions"><button id="openSupport" type="button">小額支持</button><button id="openReport" type="button">回報問題／建議功能</button></div></footer>
+  <footer><div class="footer-brand"><span>© 2026 裁得好</span><span class="visitor-counter" title="啟用後累計的瀏覽次數，包含重複造訪；非不重複訪客人數。"><span>累計瀏覽：</span><output id="visitorCount">—</output></span></div><span>尺寸計算僅供估算，實際裁切請預留刀縫。</span><div class="footer-actions"><button id="openSupport" type="button">小額支持</button><button id="openReport" type="button">回報問題／建議功能</button></div></footer>
   <script src="planner.js?v=3"></script>
   <script src="cut-position.js?v=1"></script>
   <script src="app.js?v=49"></script>
-  <script src="i18n.js?v=42"></script>
+  <script src="i18n.js?v=43"></script>
+  <script src="visitor-counter.js?v=1" defer></script>
 </body>
 </html>

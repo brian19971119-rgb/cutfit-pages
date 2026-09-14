@@ -794,6 +794,14 @@ const positionTranslations={
 Object.entries(positionTranslations).forEach(([locale,values])=>Object.assign(dictionaries[locale],{'原紙底邊往上：':values[0],'原紙左邊往右：':values[1],[positionNote]:values[2]}));
 Object.entries({'zh-CN':'裁线方向与定位以图中原纸为准。',en:'Cut direction and position refer to the original sheet as shown.',ja:'裁断方向と位置は図の原紙を基準とします。',ko:'재단 방향과 위치는 그림의 원지를 기준으로 합니다.',th:'ทิศทางและตำแหน่งตัดอ้างอิงจากกระดาษเดิมตามภาพ'}).forEach(([locale,text])=>dictionaries[locale]['裁線方向與定位以圖中原紙為準。']=text);
 const supported=Object.keys(dictionaries),select=document.getElementById('languageSelect');let observer;
+const counterText={
+  'zh-CN':['累计浏览：','暂时无法获取','启用后累计的浏览次数，包含重复造访；非不重复访客人数。'],
+  en:['Total page views:','Temporarily unavailable','Page views since activation, including repeat visits; not unique visitors.'],
+  ja:['累計閲覧数：','一時的に取得できません','導入後の累計閲覧数です。再訪問を含み、ユニーク訪問者数ではありません。'],
+  ko:['누적 조회수:','일시적으로 조회할 수 없음','통계 시작 후의 누적 조회수입니다. 재방문을 포함하며 순 방문자 수가 아닙니다.'],
+  th:['ยอดเข้าชมสะสม:','ไม่สามารถแสดงได้ชั่วคราว','ยอดเข้าชมตั้งแต่เริ่มนับ รวมการเข้าชมซ้ำ ไม่ใช่จำนวนผู้เข้าชมที่ไม่ซ้ำกัน']
+};
+Object.entries(counterText).forEach(([lang,t])=>Object.assign(dictionaries[lang],{'累計瀏覽：':t[0],'暫時無法取得':t[1],'啟用後累計的瀏覽次數，包含重複造訪；非不重複訪客人數。':t[2]}));
 const source=new WeakMap(),attributeSource=new WeakMap();
 const pageTitles={'zh-TW':'裁得好 — 紙張裁切最佳化','zh-CN':'CutFit — 纸张裁切优化',en:'CutFit — Paper Cutting Optimizer',ja:'CutFit — 用紙裁断最適化',ko:'CutFit — 종이 재단 최적화',th:'CutFit — เครื่องมือปรับการตัดกระดาษ'};
 const observerOptions={subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['placeholder','title','aria-label']};

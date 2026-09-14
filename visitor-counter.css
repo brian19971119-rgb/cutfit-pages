@@ -1,0 +1,3 @@
+.footer-brand { display:flex; flex-direction:column; gap:6px; }
+.visitor-counter { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px; font:400 13px/1.5 system-ui,sans-serif; color:var(--muted); }
+.visitor-counter output { font-weight:600; font-variant-numeric:tabular-nums; color:var(--green); }
