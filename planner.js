@@ -1,11 +1,17 @@
 // 裁切排版計算模組：純幾何/排版邏輯，不觸碰 DOM。
 // 依賴 app.js 定義的 fmt() / fromMm() / currentUnit（僅用於刀序文字說明）。
 // 只用可一刀切到底的斷裁排法：整齊網格、直向分帶、橫向分帶。
-function makePlan(pw,ph,tw,th,rotate,shortFirst=false){
+function grainAllows(rotated,grain={}){
+  if(!grain.mode||grain.mode==='any')return true;
+  if(!['x','y'].includes(grain.source))return false;
+  const axis=(grain.axis||'y')==='y'?(rotated?'x':'y'):(rotated?'y':'x');
+  return grain.mode==='with'?axis===grain.source:axis!==grain.source;
+}
+function makePlan(pw,ph,tw,th,rotate,shortFirst=false,grain={}){
   const plans=[];
   const paperIsLandscape=pw>=ph;
   const add=(name,rects,detail,strategy)=>{
-    if(!rects.length)return;
+    if(!rects.length||rects.some(r=>!grainAllows(r.rotated,grain)))return;
     const bandSize=strategy==='vertical'?rects[0].w:rects[0].h,cutLength=strategy==='vertical'?ph:pw;
     const pieceIsLandscape=rects[0].w>=rects[0].h,orientationMismatch=pieceIsLandscape===paperIsLandscape?0:1;
     plans.push({name,rects,detail,strategy,count:rects.length,usage:rects.length*tw*th/(pw*ph),bandSize,shortPreferred:Math.abs(cutLength-Math.min(pw,ph))<.01,shortFirst,orientationMismatch});
@@ -16,8 +22,8 @@ function makePlan(pw,ph,tw,th,rotate,shortFirst=false){
     add(label,rects,`${cols} 欄 × ${rows} 列`,strategy);
   };
   grid(tw,th,false,'直向整齊排列','vertical');
-  if(rotate&&Math.abs(tw-th)>1e-7)grid(th,tw,true,'橫向整齊排列','vertical');
-  if(rotate&&Math.abs(tw-th)>1e-7){
+  if(rotate)grid(th,tw,true,'橫向整齊排列','vertical');
+  if(rotate&&Math.abs(tw-th)>1e-7&&grainAllows(false,grain)&&grainAllows(true,grain)){
     for(let a=0;a<=Math.floor((pw+1e-7)/tw);a++)for(let b=0;b<=Math.floor((pw+1e-7)/th);b++){
       if(!a||!b||a*tw+b*th>pw+1e-7)continue;
       const rects=[];let x=0;
@@ -39,11 +45,12 @@ function makePlan(pw,ph,tw,th,rotate,shortFirst=false){
 }
 
 // 只排入指定數量，並優先留下最大的完整矩形餘紙。
-function makeExactPlan(pw,ph,tw,th,count,rotate,shortFirst=false){
+function makeExactPlan(pw,ph,tw,th,count,rotate,shortFirst=false,grain={}){
   const plans=[];
   const paperIsLandscape=pw>=ph;
   const remainderValue=remainder=>{const area=Math.max(0,remainder.w)*Math.max(0,remainder.h),long=Math.max(remainder.w,remainder.h),short=Math.min(remainder.w,remainder.h),shape=long>0?short/long:0;return {area,shape,reuseScore:area*Math.sqrt(shape)};};
   const addOrientation=(w,h,rotated)=>{
+    if(!grainAllows(rotated,grain))return;
     const orientationMismatch=(w>=h)===paperIsLandscape?0:1;
     const maxCols=Math.floor((pw+1e-7)/w),maxRows=Math.floor((ph+1e-7)/h);
     for(let cols=1;cols<=Math.min(maxCols,count);cols++){
@@ -59,7 +66,7 @@ function makeExactPlan(pw,ph,tw,th,count,rotate,shortFirst=false){
       if(rects.length===count)plans.push({name:'保留較好再利用的餘紙',rects,detail:`${rows} 列，共 ${rects.length} 張`,strategy:'horizontal',count:rects.length,usage:rects.length*tw*th/(pw*ph),bandSize:h,shortPreferred:Math.abs(pw-Math.min(pw,ph))<.01,shortFirst,orientationMismatch,remainder:{...remainder,...remainderValue(remainder)}});
     }
   };
-  addOrientation(tw,th,false);if(rotate&&Math.abs(tw-th)>1e-7)addOrientation(th,tw,true);
+  addOrientation(tw,th,false);if(rotate)addOrientation(th,tw,true);
   plans.forEach(p=>p.cutCount=buildCutSequence(p,pw,ph).length);
   plans.sort((a,b)=>(shortFirst?Number(b.shortPreferred)-Number(a.shortPreferred):0)||b.remainder.reuseScore-a.remainder.reuseScore||b.remainder.area-a.remainder.area||a.orientationMismatch-b.orientationMismatch||a.cutCount-b.cutCount);
   return plans[0]||null;
@@ -116,15 +123,16 @@ function buildCutSequence(plan,pw,ph){
   return result;
 }
 
-function makeRollPlan(rollW,tw,th,qty,rotate){
+function makeRollPlan(rollW,tw,th,qty,rotate,grain={}){
   const choices=[];
   const add=(pieceAcross,pieceAdvance,rotated)=>{
+    if(!grainAllows(rotated,grain))return;
     const across=Math.floor((rollW+1e-7)/pieceAcross);if(!across)return;
     const rows=Math.ceil(qty/across),usedLength=rows*pieceAdvance,previewRows=Math.min(rows,12),previewLength=previewRows*pieceAdvance,rects=[];
     for(let row=0;row<previewRows;row++){const inRow=Math.min(across,qty-row*across);for(let col=0;col<inRow;col++)rects.push({x:col*pieceAcross,y:row*pieceAdvance,w:pieceAcross,h:pieceAdvance,rotated,n:rects.length+1});}
     choices.push({name:rotated?'成品旋轉 90° 排版':'成品正向排版',rects,detail:`每排 ${across} 張 × ${rows} 排`,strategy:'horizontal',isRoll:true,count:qty,across,rows,usedLength,previewLength,usage:qty*tw*th/(rollW*usedLength)});
   };
-  add(tw,th,false);if(rotate&&Math.abs(tw-th)>1e-7)add(th,tw,true);
+  add(tw,th,false);if(rotate)add(th,tw,true);
   choices.sort((a,b)=>a.usedLength-b.usedLength||b.usage-a.usage);return choices[0]||null;
 }
 
@@ -133,7 +141,8 @@ function makeMixedRollPlan(rollW,jobs,rotate){
   // 尺寸種類或張數一多，窮舉組合與動態規劃的計算量會爆炸式成長；用呼叫次數預算避免瀏覽器卡死，
   // 超過預算時放棄混排最佳化，退回下方「每種尺寸各自排滿整橫排」的保底排法，確保一定會回傳結果。
   const ENUM_BUDGET=20000,DP_OPS_BUDGET=300000;
-  const variants=[];jobs.forEach((job,jobIndex)=>{variants.push({jobIndex,w:job.w,h:job.h,rotated:false});if(rotate&&Math.abs(job.w-job.h)>.01)variants.push({jobIndex,w:job.h,h:job.w,rotated:true});});
+  const variants=[];jobs.forEach((job,jobIndex)=>{if(grainAllows(false,job.grain))variants.push({jobIndex,w:job.w,h:job.h,rotated:false});if(rotate&&grainAllows(true,job.grain))variants.push({jobIndex,w:job.h,h:job.w,rotated:true});});
+  if(jobs.some((_,i)=>!variants.some(v=>v.jobIndex===i)))return null;
   const optionMap=new Map(),counts=Array(jobs.length).fill(0),placements=[];
   let enumCalls=0,enumBudgetHit=false;
   const enumerate=(index,usedWidth,height)=>{
@@ -184,8 +193,9 @@ function makeMixedRollPlan(rollW,jobs,rotate){
     let infeasible=false;
     jobs.forEach((job,jobIndex)=>{
       if(infeasible||job.qty<=0)return;
-      const options=[{w:job.w,h:job.h,rotated:false}];
-      if(rotate&&Math.abs(job.w-job.h)>.01)options.push({w:job.h,h:job.w,rotated:true});
+      const options=[];
+      if(grainAllows(false,job.grain))options.push({w:job.w,h:job.h,rotated:false});
+      if(rotate&&grainAllows(true,job.grain))options.push({w:job.h,h:job.w,rotated:true});
       const best=options.map(o=>({...o,across:Math.floor((rollW+1e-7)/o.w)})).filter(o=>o.across>0).sort((a,b)=>b.across-a.across)[0];
       if(!best){infeasible=true;return;}
       let remainingQty=job.qty;
@@ -213,5 +223,5 @@ function makeGroupedRollPlan(rollW,jobs,rotate){
 }
 
 if(typeof module!=='undefined'&&module.exports){
-  module.exports={makePlan,makeExactPlan,makeReusableSubsetPlan,buildCutSequence,makeRollPlan,makeMixedRollPlan,makeGroupedRollPlan};
+  module.exports={grainAllows,makePlan,makeExactPlan,makeReusableSubsetPlan,buildCutSequence,makeRollPlan,makeMixedRollPlan,makeGroupedRollPlan};
 }

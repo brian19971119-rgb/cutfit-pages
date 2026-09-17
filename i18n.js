@@ -793,6 +793,7 @@ const positionTranslations={
 };
 Object.entries(positionTranslations).forEach(([locale,values])=>Object.assign(dictionaries[locale],{'原紙底邊往上：':values[0],'原紙左邊往右：':values[1],[positionNote]:values[2]}));
 Object.entries({'zh-CN':'裁线方向与定位以图中原纸为准。',en:'Cut direction and position refer to the original sheet as shown.',ja:'裁断方向と位置は図の原紙を基準とします。',ko:'재단 방향과 위치는 그림의 원지를 기준으로 합니다.',th:'ทิศทางและตำแหน่งตัดอ้างอิงจากกระดาษเดิมตามภาพ'}).forEach(([locale,text])=>dictionaries[locale]['裁線方向與定位以圖中原紙為準。']=text);
+grainPhrases.forEach(([source,...values])=>grainLocales.forEach((locale,i)=>{dictionaries[locale][source]=values[i];}));
 const supported=Object.keys(dictionaries),select=document.getElementById('languageSelect');let observer;
 const counterText={
   'zh-CN':['累计浏览：','暂时无法获取','启用后累计的浏览次数，包含重复造访；非不重复访客人数。'],

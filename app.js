@@ -145,6 +145,7 @@ function showSheetPlan(index){
   }
   if(isRoll){$('measureW').textContent=`卷寬 ${fmt(fromMm(view.pw))} ${currentUnit}`;$('measureH').textContent=`使用長度 ${view.ph>=1000?`${fmt(view.ph/1000,2)} m`:`${fmt(fromMm(view.ph))} ${currentUnit}`}`;}
   if(isRoll&&sheetPlanViews.length>1){$('sheets').textContent=fmt(view.plan.usedLength/1000,2);$('usage').textContent=`${fmt(view.plan.usage*100)}%`;$('waste').textContent=`這個排法損耗 ${fmt(100-view.plan.usage*100)}%`;}
+  paintGrain();
   prepareCutSequence(view.plan,view.pw,view.ph);
   $('stepTitle').textContent=view.plan.shortFirst?`短邊優先 · ${view.stepTitle}`:view.stepTitle;$('stepDetail').textContent=view.plan.shortFirst?`第一刀會橫跨原紙較短的一邊。${view.stepDetail}`:view.stepDetail;
 }
@@ -197,7 +198,7 @@ function renderSheet(){
   const pw=toMm($('paperW').value),ph=toMm($('paperH').value),tw=toMm($('targetW').value),th=toMm($('targetH').value),qty=Math.max(1,Math.floor(Number($('quantity').value)||1));
   if(![pw,ph,tw,th].every(n=>n>0))return;
   const shortFirst=$('shortEdgeFirst').checked;
-  const capacityPlan=makePlan(pw,ph,tw,th,$('allowRotate').checked,shortFirst);
+  const capacityPlan=makePlan(pw,ph,tw,th,$('allowRotate').checked,shortFirst,readGrain());
   if(!capacityPlan){
     currentPlan=null;currentPaper=null;stopCutAnimation();
     $('pieces').textContent='0';$('sheets').textContent='—';$('capacity').textContent='—';$('usage').textContent='0%';$('waste').textContent='成品大於原紙';
@@ -215,14 +216,14 @@ function renderSheet(){
   }
   const sheets=Math.ceil(qty/capacityPlan.count),lastCount=qty-(sheets-1)*capacityPlan.count;
   let orientationChoices=null;
-  if($('allowRotate').checked&&Math.abs(tw-th)>1e-7&&sheets===1&&lastCount===capacityPlan.count){
+  if(readGrain().mode==='any'&&$('allowRotate').checked&&Math.abs(tw-th)>1e-7&&sheets===1&&lastCount===capacityPlan.count){
     const planA=makeExactPlan(pw,ph,tw,th,capacityPlan.count,false,shortFirst);
     const planB=makeExactPlan(pw,ph,th,tw,capacityPlan.count,false,shortFirst);
     if(planA&&planB&&planA.count===capacityPlan.count&&planB.count===capacityPlan.count&&(Math.abs(planA.rects[0].w-planB.rects[0].w)>1e-7||Math.abs(planA.rects[0].h-planB.rects[0].h)>1e-7)){
       orientationChoices=[planA,planB].sort((a,b)=>a.remainder.reuseScore-b.remainder.reuseScore);
     }
   }
-  let plan=lastCount<capacityPlan.count?makeExactPlan(pw,ph,tw,th,lastCount,$('allowRotate').checked,shortFirst):capacityPlan;
+  let plan=lastCount<capacityPlan.count?makeExactPlan(pw,ph,tw,th,lastCount,$('allowRotate').checked,shortFirst,readGrain()):capacityPlan;
   if(!plan&&lastCount<capacityPlan.count){
     plan=makeReusableSubsetPlan(capacityPlan,lastCount,pw,ph,tw,th,shortFirst);
   }
@@ -242,11 +243,11 @@ function renderSheet(){
 function parseBatchInput(text){
   const parts=text.split(/[\n,;，；]+/).map(x=>x.trim()).filter(Boolean),jobs=[],errors=[];
   parts.forEach((part,index)=>{
-    const m=part.match(/^(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)\s*(mm|cm|in|inch|英吋|吋)?\s*[x×*]\s*(\d+)\s*(p|pcs?|張)?$/i);
+    const m=part.match(/^(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)\s*(mm|cm|in|inch|英吋|吋)?\s*[x×*]\s*(\d+)\s*(p|pcs?|張)?(?:\s*\|(x|y):(any|with|across))?$/i);
     if(!m){errors.push(`第 ${index+1} 筆「${part}」無法讀取`);return;}
     if(!(Number(m[1])>0&&Number(m[2])>0&&Number(m[4])>0)){errors.push(`第 ${index+1} 筆「${part}」的寬度、高度和數量需大於 0`);return;}
     const unit=(m[3]||currentUnit).toLowerCase(),factor=unit==='mm'?1:(unit==='cm'?10:25.4);
-    jobs.push({label:part,w:Number(m[1])*factor,h:Number(m[2])*factor,qty:Number(m[4])});
+    jobs.push({label:part.split('|')[0],w:Number(m[1])*factor,h:Number(m[2])*factor,qty:Number(m[4]),grain:{source:readGrain().source,axis:(m[6]||'y').toLowerCase(),mode:(m[7]||'any').toLowerCase()}});
   });
   return {jobs,errors};
 }
@@ -254,8 +255,12 @@ function parseBatchInput(text){
 function renderBatchJobList(){
   const list=$('batchJobList'),parsed=parseBatchInput($('batchInput').value);list.replaceChildren();
   if(!parsed.jobs.length){const p=document.createElement('p');p.textContent='尚未加入任何裁切項目。';list.appendChild(p);return;}
-  const save=jobs=>{$('batchInput').value=jobs.map(job=>`${fmt(job.w/factors[currentUnit],2).replaceAll(',','')}x${fmt(job.h/factors[currentUnit],2).replaceAll(',','')}${currentUnit}x${job.qty}p`).join('\n');renderBatchJobList();render();};
+  const save=jobs=>{$('batchInput').value=jobs.map(job=>`${fmt(job.w/factors[currentUnit],2).replaceAll(',','')}x${fmt(job.h/factors[currentUnit],2).replaceAll(',','')}${currentUnit}x${job.qty}p|${job.grain.axis}:${job.grain.mode}`).join('\n');renderBatchJobList();render();};
   parsed.jobs.forEach((job,index)=>{const item=document.createElement('div');item.className='job-item';item.innerHTML=`<b>${fmt(job.w/factors[currentUnit],2)} × ${fmt(job.h/factors[currentUnit],2)} ${currentUnit}</b><div class="job-quantity"><button type="button" data-action="minus" aria-label="減少第 ${index+1} 項數量">−</button><span>${job.qty} 張</span><button type="button" data-action="plus" aria-label="增加第 ${index+1} 項數量">＋</button></div><button type="button" data-action="delete" aria-label="刪除第 ${index+1} 項">×</button>`;item.querySelector('[data-action="minus"]').addEventListener('click',()=>{const next=[...parsed.jobs];next[index]={...job,qty:Math.max(1,job.qty-1)};save(next);});item.querySelector('[data-action="plus"]').addEventListener('click',()=>{const next=[...parsed.jobs];next[index]={...job,qty:job.qty+1};save(next);});item.querySelector('[data-action="delete"]').addEventListener('click',()=>{const next=[...parsed.jobs];next.splice(index,1);save(next);});list.appendChild(item);});
+  parsed.jobs.forEach((job,index)=>{
+    const controls=createGrainTargetControls(job.grain,()=>{job.grain.axis=controls.querySelector('[data-grain-axis]').value;job.grain.mode=controls.querySelector('[data-grain-mode]').value;save(parsed.jobs);});
+    list.children[index].appendChild(controls);
+  });
 }
 function setTargetInputMode(mode){
   targetInputMode=mode;$('useBatch').checked=mode==='multiple';
@@ -288,8 +293,9 @@ function renderRoll(){
   if(batchMode){const parsed=parseBatchInput($('batchInput').value);$('batchError').textContent=parsed.errors.join('；');document.querySelector('.batch-entry').classList.toggle('has-error',!!parsed.errors.length);if(parsed.errors.length||!parsed.jobs.length)return;jobs=parsed.jobs;}
   else{const tw=toMm($('targetW').value),th=toMm($('targetH').value),qty=Math.max(1,Math.floor(Number($('quantity').value)||1));if(!(tw>0&&th>0))return;jobs=[{label:`${fmt(fromMm(tw))}×${fmt(fromMm(th))} ${currentUnit}`,w:tw,h:th,qty}];$('batchError').textContent='';document.querySelector('.batch-entry').classList.remove('has-error');}
   if(!(pw>0))return;
+  if(!batchMode)jobs.forEach(job=>job.grain=readGrain());
   const totalQty=jobs.reduce((sum,j)=>sum+j.qty,0);
-  const planned=batchMode?[{label:'整卷混合排版',qty:totalQty,plan:makeMixedRollPlan(pw,jobs,$('allowRotate').checked)}]:jobs.map(job=>({...job,plan:makeRollPlan(pw,job.w,job.h,job.qty,$('allowRotate').checked)}));
+  const planned=batchMode?[{label:'整卷混合排版',qty:totalQty,plan:makeMixedRollPlan(pw,jobs,$('allowRotate').checked)}]:jobs.map(job=>({...job,plan:makeRollPlan(pw,job.w,job.h,job.qty,$('allowRotate').checked,job.grain)}));
   const failed=planned.find(x=>!x.plan);
   if(failed){currentPlan=null;currentPaper=null;stopCutAnimation();$('pieces').textContent='0';$('sheets').textContent='—';$('usage').textContent='0%';$('waste').textContent='成品寬於捲筒';$('layoutCanvas').replaceChildren();$('planDescription').textContent=`${failed.label} 放不下目前卷寬`;return;}
   const totalLength=planned.reduce((s,x)=>s+x.plan.usedLength,0),usedArea=jobs.reduce((s,x)=>s+x.qty*x.w*x.h,0),usage=usedArea/(pw*totalLength),unrotatedPlan=batchMode?makeMixedRollPlan(pw,jobs,false):null,rotationSaving=unrotatedPlan?Math.max(0,unrotatedPlan.usedLength-totalLength):0;
@@ -313,10 +319,13 @@ function renderRoll(){
 }
 
 function render(){
+  updateGrainDemo();
+  if(!validateGrain())return;
   document.querySelector('.feasibility').classList.remove('not-enough');
-  if(sourceMode==='roll')return renderRoll();
+  if(sourceMode==='roll'){renderRoll();finishGrainRender();return;}
   $('capacityMetric').hidden=false;
   $('piecesLabel').textContent='本次目標數量';$('piecesUnit').textContent='張成品';$('sheetsLabel').textContent='需要原紙';$('sheetsUnit').textContent='張';$('actualLabel').textContent='實際產出';$('extraLabel').textContent='較實用完整餘紙';$('feasibilityTitle').textContent='優先保留容易再利用的餘紙';$('feasibilityText').textContent='只使用「一刀切到底」的方式；同時評估餘紙面積與長寬比例，避免留下難利用的狹長紙條。';renderSheet();
+  finishGrainRender();
 }
 
 function reportValue(id){const el=$(id);return el?el.value||'未填寫':'—';}
@@ -371,7 +380,7 @@ $('togglePhotoSizes').addEventListener('click',()=>{showAllPhotoSizes=!showAllPh
 $('sizeDialog').addEventListener('click',e=>{if(e.target===$('sizeDialog'))$('sizeDialog').close();});
 document.querySelectorAll('.size-tabs button').forEach(button=>button.addEventListener('click',()=>{activeFamily=button.dataset.family;document.querySelectorAll('.size-tabs button').forEach(b=>b.classList.toggle('active',b===button));renderSizeGrid();}));
 ['paperW','paperH'].forEach(id=>$(id).addEventListener('input',()=>{$('paperSizeName').textContent='自訂尺寸';}));
-$('swapPaperDims').addEventListener('click',()=>{const w=$('paperW').value;$('paperW').value=$('paperH').value;$('paperH').value=w;$('paperSizeName').textContent='自訂尺寸';render();});
+$('swapPaperDims').addEventListener('click',()=>{const w=$('paperW').value;$('paperW').value=$('paperH').value;$('paperH').value=w;const grain=$('paperGrain');if(grain.value!=='none')grain.value=grain.value==='x'?'y':'x';$('paperSizeName').textContent='自訂尺寸';render();});
 ['targetW','targetH'].forEach(id=>$(id).addEventListener('input',()=>{$('targetSizeName').textContent='自訂尺寸';}));
 $('unit').addEventListener('change',e=>{const next=e.target.value;['paperW','paperH','targetW','targetH','rollW','jobW','jobH'].forEach(id=>{if($(id).value==='')return;const mm=Number($(id).value)*factors[currentUnit];$(id).value=fmt(mm/factors[next],2).replaceAll(',','');});currentUnit=next;document.querySelectorAll('.unit-label').forEach(x=>x.textContent=next);render();});
 $('calculateBtn').addEventListener('click',()=>{render();const hasBatchError=sourceMode==='roll'&&$('useBatch').checked&&$('batchError').textContent;if(hasBatchError)$('batchInput').scrollIntoView({behavior:'smooth',block:'center'});else document.querySelector('.result').scrollIntoView({behavior:'smooth',block:'nearest'});});
@@ -410,5 +419,6 @@ document.querySelectorAll('[data-roll-width]').forEach(button=>button.addEventLi
 $('fillBatchExample').addEventListener('click',()=>{$('batchInput').value='30x34cmx5p, 43x43cmx8p\n20x25cmx10p';$('useBatch').checked=true;renderBatchJobList();render();});
 $('useBatch').addEventListener('change',render);
 $('quantity').value='1';document.querySelectorAll('[data-quantity]').forEach(b=>b.classList.toggle('active',b.dataset.quantity==='1'));
+initGrainControls();
 render();
 window.addEventListener('pageshow',event=>{if(event.persisted){$('quantity').value='1';document.querySelectorAll('[data-quantity]').forEach(b=>b.classList.toggle('active',b.dataset.quantity==='1'));render();}});
