@@ -1,9 +1,17 @@
 // 裁切排版計算模組：純幾何/排版邏輯，不觸碰 DOM。
 // 依賴 app.js 定義的 fmt() / fromMm() / currentUnit（僅用於刀序文字說明）。
+// 瀏覽器環境下 grain.js 以 <script> 標籤載入，getAllowedRotations 已是全域函式；
+// Node 環境（測試）沒有這層共用全域，改用 require 取得。
+if(typeof require==='function'&&typeof getAllowedRotations==='undefined'){
+  var {getAllowedRotations}=require('./grain');
+}
 // 只用可一刀切到底的斷裁排法：整齊網格、直向分帶、橫向分帶。
-function makePlan(pw,ph,tw,th,rotate,shortFirst=false){
+// grain 為選填的絲向設定 {paperGrainAxis,referenceEdge,requirement}（見 grain.js）；
+// 不傳入時行為與絲向功能上線前完全一致。
+function makePlan(pw,ph,tw,th,rotate,shortFirst=false,grain){
   const plans=[];
   const paperIsLandscape=pw>=ph;
+  const {allowed}=getAllowedRotations({...grain,allowRotate:rotate});
   const add=(name,rects,detail,strategy)=>{
     if(!rects.length)return;
     const bandSize=strategy==='vertical'?rects[0].w:rects[0].h,cutLength=strategy==='vertical'?ph:pw;
@@ -15,9 +23,11 @@ function makePlan(pw,ph,tw,th,rotate,shortFirst=false){
     for(let y=0;y<rows;y++)for(let x=0;x<cols;x++)rects.push({x:x*w,y:y*h,w,h,rotated,n:rects.length+1});
     add(label,rects,`${cols} 欄 × ${rows} 列`,strategy);
   };
-  grid(tw,th,false,'直向整齊排列','vertical');
-  if(rotate&&Math.abs(tw-th)>1e-7)grid(th,tw,true,'橫向整齊排列','vertical');
-  if(rotate&&Math.abs(tw-th)>1e-7){
+  // 正方形成品（tw===th）幾何上跟旋轉後一樣，本可省略第二次網格計算；
+  // 但若絲向規則只允許旋轉後的邏輯方向，仍必須算這一次，否則會誤判成「排不出來」。
+  if(allowed.includes(false))grid(tw,th,false,'直向整齊排列','vertical');
+  if(rotate&&allowed.includes(true)&&(Math.abs(tw-th)>1e-7||!allowed.includes(false)))grid(th,tw,true,'橫向整齊排列','vertical');
+  if(rotate&&Math.abs(tw-th)>1e-7&&allowed.includes(false)&&allowed.includes(true)){
     for(let a=0;a<=Math.floor((pw+1e-7)/tw);a++)for(let b=0;b<=Math.floor((pw+1e-7)/th);b++){
       if(!a||!b||a*tw+b*th>pw+1e-7)continue;
       const rects=[];let x=0;
@@ -39,9 +49,10 @@ function makePlan(pw,ph,tw,th,rotate,shortFirst=false){
 }
 
 // 只排入指定數量，並優先留下最大的完整矩形餘紙。
-function makeExactPlan(pw,ph,tw,th,count,rotate,shortFirst=false){
+function makeExactPlan(pw,ph,tw,th,count,rotate,shortFirst=false,grain){
   const plans=[];
   const paperIsLandscape=pw>=ph;
+  const {allowed}=getAllowedRotations({...grain,allowRotate:rotate});
   const remainderValue=remainder=>{const area=Math.max(0,remainder.w)*Math.max(0,remainder.h),long=Math.max(remainder.w,remainder.h),short=Math.min(remainder.w,remainder.h),shape=long>0?short/long:0;return {area,shape,reuseScore:area*Math.sqrt(shape)};};
   const addOrientation=(w,h,rotated)=>{
     const orientationMismatch=(w>=h)===paperIsLandscape?0:1;
@@ -59,7 +70,8 @@ function makeExactPlan(pw,ph,tw,th,count,rotate,shortFirst=false){
       if(rects.length===count)plans.push({name:'保留較好再利用的餘紙',rects,detail:`${rows} 列，共 ${rects.length} 張`,strategy:'horizontal',count:rects.length,usage:rects.length*tw*th/(pw*ph),bandSize:h,shortPreferred:Math.abs(pw-Math.min(pw,ph))<.01,shortFirst,orientationMismatch,remainder:{...remainder,...remainderValue(remainder)}});
     }
   };
-  addOrientation(tw,th,false);if(rotate&&Math.abs(tw-th)>1e-7)addOrientation(th,tw,true);
+  if(allowed.includes(false))addOrientation(tw,th,false);
+  if(rotate&&allowed.includes(true)&&(Math.abs(tw-th)>1e-7||!allowed.includes(false)))addOrientation(th,tw,true);
   plans.forEach(p=>p.cutCount=buildCutSequence(p,pw,ph).length);
   plans.sort((a,b)=>(shortFirst?Number(b.shortPreferred)-Number(a.shortPreferred):0)||b.remainder.reuseScore-a.remainder.reuseScore||b.remainder.area-a.remainder.area||a.orientationMismatch-b.orientationMismatch||a.cutCount-b.cutCount);
   return plans[0]||null;
@@ -116,24 +128,32 @@ function buildCutSequence(plan,pw,ph){
   return result;
 }
 
-function makeRollPlan(rollW,tw,th,qty,rotate){
+// 捲筒紙的「送紙方向」在絲向計算中對應一般紙張的高度軸（見 grain.js 開頭說明），
+// 由呼叫端把 grain.paperGrainAxis 換算成 width/height 後再傳入。
+function makeRollPlan(rollW,tw,th,qty,rotate,grain){
   const choices=[];
+  const {allowed}=getAllowedRotations({...grain,allowRotate:rotate});
   const add=(pieceAcross,pieceAdvance,rotated)=>{
     const across=Math.floor((rollW+1e-7)/pieceAcross);if(!across)return;
     const rows=Math.ceil(qty/across),usedLength=rows*pieceAdvance,previewRows=Math.min(rows,12),previewLength=previewRows*pieceAdvance,rects=[];
     for(let row=0;row<previewRows;row++){const inRow=Math.min(across,qty-row*across);for(let col=0;col<inRow;col++)rects.push({x:col*pieceAcross,y:row*pieceAdvance,w:pieceAcross,h:pieceAdvance,rotated,n:rects.length+1});}
     choices.push({name:rotated?'成品旋轉 90° 排版':'成品正向排版',rects,detail:`每排 ${across} 張 × ${rows} 排`,strategy:'horizontal',isRoll:true,count:qty,across,rows,usedLength,previewLength,usage:qty*tw*th/(rollW*usedLength)});
   };
-  add(tw,th,false);if(rotate&&Math.abs(tw-th)>1e-7)add(th,tw,true);
+  if(allowed.includes(false))add(tw,th,false);
+  if(rotate&&allowed.includes(true)&&(Math.abs(tw-th)>1e-7||!allowed.includes(false)))add(th,tw,true);
   choices.sort((a,b)=>a.usedLength-b.usedLength||b.usage-a.usage);return choices[0]||null;
 }
 
-function makeMixedRollPlan(rollW,jobs,rotate){
+// paperGrainAxis 是整卷紙共用的絲向（同一捲紙只有一個絲向）；每個 job 可各自帶
+// job.grain={referenceEdge,requirement} 設定自己的基準邊與絲向要求（規格 2.4：
+// 混合尺寸模式中，每一種成品都能有自己的絲向設定）。
+function makeMixedRollPlan(rollW,jobs,rotate,paperGrainAxis){
   // 精確比較每一橫排可用的正向／旋轉組合，再用動態規劃找出總卷長最短的組合。
   // 尺寸種類或張數一多，窮舉組合與動態規劃的計算量會爆炸式成長；用呼叫次數預算避免瀏覽器卡死，
   // 超過預算時放棄混排最佳化，退回下方「每種尺寸各自排滿整橫排」的保底排法，確保一定會回傳結果。
   const ENUM_BUDGET=20000,DP_OPS_BUDGET=300000;
-  const variants=[];jobs.forEach((job,jobIndex)=>{variants.push({jobIndex,w:job.w,h:job.h,rotated:false});if(rotate&&Math.abs(job.w-job.h)>.01)variants.push({jobIndex,w:job.h,h:job.w,rotated:true});});
+  const allowedByJob=jobs.map(job=>getAllowedRotations({...job.grain,paperGrainAxis,allowRotate:rotate}).allowed);
+  const variants=[];jobs.forEach((job,jobIndex)=>{const allowed=allowedByJob[jobIndex];if(allowed.includes(false))variants.push({jobIndex,w:job.w,h:job.h,rotated:false});if(rotate&&allowed.includes(true)&&(Math.abs(job.w-job.h)>.01||!allowed.includes(false)))variants.push({jobIndex,w:job.h,h:job.w,rotated:true});});
   const optionMap=new Map(),counts=Array(jobs.length).fill(0),placements=[];
   let enumCalls=0,enumBudgetHit=false;
   const enumerate=(index,usedWidth,height)=>{
@@ -160,14 +180,15 @@ function makeMixedRollPlan(rollW,jobs,rotate){
   if(!enumBudgetHit){
     const memo=new Map();
     let dpOps=0,dpBudgetHit=false;
-    const solve=remaining=>{
+    const solve=(remaining,depth=0)=>{
+      if(depth>=400){dpBudgetHit=true;return null;}
       if(dpBudgetHit)return null;
       const key=remaining.join(',');if(remaining.every(x=>x===0))return {length:0,rows:[]};if(memo.has(key))return memo.get(key);
       let best=null;
       for(const option of rowOptions){
         if(++dpOps>DP_OPS_BUDGET){dpBudgetHit=true;break;}
         if(option.counts.some((count,i)=>count>remaining[i]))continue;
-        const next=solve(remaining.map((count,i)=>count-option.counts[i]));if(!next)continue;
+        const next=solve(remaining.map((count,i)=>count-option.counts[i]),depth+1);if(!next)continue;
         const candidate={length:option.h+next.length,rows:[option,...next.rows]};
         if(!best||candidate.length<best.length-.001||(Math.abs(candidate.length-best.length)<.001&&candidate.rows.length<best.rows.length))best=candidate;
       }
@@ -184,8 +205,9 @@ function makeMixedRollPlan(rollW,jobs,rotate){
     let infeasible=false;
     jobs.forEach((job,jobIndex)=>{
       if(infeasible||job.qty<=0)return;
-      const options=[{w:job.w,h:job.h,rotated:false}];
-      if(rotate&&Math.abs(job.w-job.h)>.01)options.push({w:job.h,h:job.w,rotated:true});
+      const allowed=allowedByJob[jobIndex],options=[];
+      if(allowed.includes(false))options.push({w:job.w,h:job.h,rotated:false});
+      if(rotate&&allowed.includes(true)&&(Math.abs(job.w-job.h)>.01||!allowed.includes(false)))options.push({w:job.h,h:job.w,rotated:true});
       const best=options.map(o=>({...o,across:Math.floor((rollW+1e-7)/o.w)})).filter(o=>o.across>0).sort((a,b)=>b.across-a.across)[0];
       if(!best){infeasible=true;return;}
       let remainingQty=job.qty;
@@ -205,9 +227,9 @@ function makeMixedRollPlan(rollW,jobs,rotate){
   return {name:'多尺寸最低耗紙排版',rects,shelves,detail:`比較 ${rowOptions.length} 種橫直組合，選出 ${shelves.length} 排`,strategy:'horizontal',isRoll:true,mixedRoll:true,count:rects.length,rows:shelves.length,across:'混合',usedLength:y,previewLength:y,usage:usedArea/(rollW*y),evaluatedLayouts:rowOptions.length};
 }
 
-function makeGroupedRollPlan(rollW,jobs,rotate){
+function makeGroupedRollPlan(rollW,jobs,rotate,paperGrainAxis){
   const shelves=[],rects=[],nextNumber=Array(jobs.length).fill(0);let y=0,n=0;
-  jobs.forEach((job,jobIndex)=>{const part=makeMixedRollPlan(rollW,[job],rotate);if(!part)return;part.shelves.forEach(source=>{const shelf={y,h:source.h,used:source.used,rects:[]};source.rects.forEach(item=>{const r={...item,y:y+(item.y-source.y),jobIndex,pieceNumber:++nextNumber[jobIndex],n:++n};shelf.rects.push(r);rects.push(r);});shelves.push(shelf);y+=source.h;});});
+  jobs.forEach((job,jobIndex)=>{const part=makeMixedRollPlan(rollW,[job],rotate,paperGrainAxis);if(!part)return;part.shelves.forEach(source=>{const shelf={y,h:source.h,used:source.used,rects:[]};source.rects.forEach(item=>{const r={...item,y:y+(item.y-source.y),jobIndex,pieceNumber:++nextNumber[jobIndex],n:++n};shelf.rects.push(r);rects.push(r);});shelves.push(shelf);y+=source.h;});});
   if(rects.length!==jobs.reduce((sum,j)=>sum+j.qty,0))return null;const usedArea=jobs.reduce((sum,j)=>sum+j.w*j.h*j.qty,0);
   return {name:'相同尺寸集中排版',rects,shelves,detail:`相同尺寸集中，共 ${shelves.length} 排`,strategy:'horizontal',isRoll:true,mixedRoll:true,count:rects.length,rows:shelves.length,across:'分尺寸',usedLength:y,previewLength:y,usage:usedArea/(rollW*y)};
 }

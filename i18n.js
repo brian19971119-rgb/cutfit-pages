@@ -802,6 +802,7 @@ const counterText={
   th:['ยอดเข้าชมสะสม:','ไม่สามารถแสดงได้ชั่วคราว','ยอดเข้าชมตั้งแต่เริ่มนับ รวมการเข้าชมซ้ำ ไม่ใช่จำนวนผู้เข้าชมที่ไม่ซ้ำกัน']
 };
 Object.entries(counterText).forEach(([lang,t])=>Object.assign(dictionaries[lang],{'累計瀏覽：':t[0],'暫時無法取得':t[1],'啟用後累計的瀏覽次數，包含重複造訪；非不重複訪客人數。':t[2]}));
+Object.entries(grainTranslations).forEach(([locale,phrases])=>Object.assign(dictionaries[locale],phrases));
 const source=new WeakMap(),attributeSource=new WeakMap();
 const pageTitles={'zh-TW':'裁得好 — 紙張裁切最佳化','zh-CN':'CutFit — 纸张裁切优化',en:'CutFit — Paper Cutting Optimizer',ja:'CutFit — 用紙裁断最適化',ko:'CutFit — 종이 재단 최적화',th:'CutFit — เครื่องมือปรับการตัดกระดาษ'};
 const observerOptions={subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['placeholder','title','aria-label']};
